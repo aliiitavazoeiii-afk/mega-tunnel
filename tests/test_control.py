@@ -34,6 +34,20 @@ class ReplacementTests(unittest.TestCase):
         self.c.finish(gen, drained=True, cleanup_approved=True)
         self.assertEqual(p.stage, Stage.COMPLETE)
 
+    def test_second_replacement_increases_generation(self):
+        first = self.new()
+        gen = first.target_generation
+        for g in ("Maya1", "Maya3"):
+            self.c.prepare_ack(g, gen, verified=True)
+        self.c.commit(gen)
+        for g in ("Maya1", "Maya3"):
+            self.c.apply_ack(g, gen, verified=True)
+        self.c.begin_drain(gen)
+        self.c.finish(gen, drained=True, cleanup_approved=True)
+        self.assertEqual(self.c.inventory.generation, gen)
+        second = self.new()
+        self.assertEqual(second.target_generation, gen + 1)
+
     def test_fail_prepare_keeps_old(self):
         p = self.new()
         self.c.prepare_ack("Maya1", p.target_generation, verified=False)
