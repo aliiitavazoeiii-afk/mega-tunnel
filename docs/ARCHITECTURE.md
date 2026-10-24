@@ -37,7 +37,7 @@ Inventory is keyed by stable `foreign_id` (F1...F4), transport and `generation`;
 5. Controller writes immutable new generation `G+1` and performs **prepare** on both gateways. Either rejection aborts.
 6. Commit a signed generation. Both gateways switch *new flows only* to candidate in canary/ramp; the old node keeps draining.
 7. Controller marks **COMPLETE only after BOTH apply ACKs**, reconciles timeouts, and retains old generation for rollback.
-8. Old server cleanup is explicit and delayed.
+8. Old server cleanup is delayed and safety-gated: operator can preauthorize automatic cleanup in the replacement wizard, but only after both ACKs, a healthy canary, zero old flows and rollback grace; otherwise explicit manual confirmation is required.
 
 A single controller loss is allowed (control plane temporarily unavailable); existing agents keep last-known-good signed config. The controller must enforce leader fencing and transactional epochs. Eventually use Postgres or equivalent with leases/fencing, never unsynchronized editable JSON on the two gateways. When partitioned, **NO mutation**, not best-effort divergent updates.
 
