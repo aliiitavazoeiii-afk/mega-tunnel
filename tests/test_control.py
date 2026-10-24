@@ -48,6 +48,49 @@ class ReplacementTests(unittest.TestCase):
         second = self.new()
         self.assertEqual(second.target_generation, gen + 1)
 
+    def test_preapproved_auto_cleanup_rejects_early_and_busy(self):
+        p = self.c.propose(
+            "F1", transport=Transport.NAIVE,
+            candidate_fingerprint=self.fp, operator_confirmed=True,
+            auto_cleanup_preapproved=True,
+        )
+        gen = p.target_generation
+        for g in ("Maya1", "Maya3"):
+            self.c.prepare_ack(g, gen, verified=True)
+        self.c.commit(gen)
+        self.c.apply_ack("Maya1", gen, verified=True)
+        with self.assertRaises(Rejected):
+            self.c.finish_auto(gen, now=90000, current_old_flow_count=0,
+                               health_verified_on_both=True)
+        self.c.apply_ack("Maya3", gen, verified=True)
+        self.c.begin_drain(gen, now=0)
+        with self.assertRaises(Rejected):
+            self.c.finish_auto(gen, now=3599, current_old_flow_count=0,
+                               health_verified_on_both=True, grace_seconds=1)
+        with self.assertRaises(Rejected):
+            self.c.finish_auto(gen, now=86400, current_old_flow_count=2,
+                               health_verified_on_both=True)
+        with self.assertRaises(Rejected):
+            self.c.finish_auto(gen, now=86400, current_old_flow_count=0,
+                               health_verified_on_both=False)
+        self.c.finish_auto(gen, now=86400, current_old_flow_count=0,
+                           health_verified_on_both=True)
+        self.assertEqual(p.stage, Stage.COMPLETE)
+        self.assertEqual(self.c.inventory.generation, gen)
+
+    def test_auto_cleanup_requires_preapproval(self):
+        p = self.new()
+        gen = p.target_generation
+        for g in ("Maya1", "Maya3"):
+            self.c.prepare_ack(g, gen, verified=True)
+        self.c.commit(gen)
+        for g in ("Maya1", "Maya3"):
+            self.c.apply_ack(g, gen, verified=True)
+        self.c.begin_drain(gen, now=0)
+        with self.assertRaises(Rejected):
+            self.c.finish_auto(gen, now=90000, current_old_flow_count=0,
+                               health_verified_on_both=True)
+
     def test_fail_prepare_keeps_old(self):
         p = self.new()
         self.c.prepare_ack("Maya1", p.target_generation, verified=False)
