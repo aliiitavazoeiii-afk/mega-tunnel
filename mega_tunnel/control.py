@@ -36,6 +36,9 @@ class Replacement:
     prepared: FrozenSet[str] = frozenset()
     applied: FrozenSet[str] = frozenset()
     prior_retained: bool = True
+    # Optional pre-authorized automatic cleanup; never before a healthy drain and grace window.
+    auto_cleanup_preapproved: bool = False
+    drain_started_at: float | None = None
     events: list = field(default_factory=list)
 
     @property
@@ -53,7 +56,8 @@ class Coordinator:
         self.pending: Replacement | None = None
 
     def propose(self, foreign_id: str, *, transport: Transport,
-                candidate_fingerprint: str, operator_confirmed: bool) -> Replacement:
+                candidate_fingerprint: str, operator_confirmed: bool,
+                auto_cleanup_preapproved: bool = False) -> Replacement:
         if not operator_confirmed:
             raise Rejected("explicit operator confirmation required")
         if self.pending and self.pending.stage not in (Stage.COMPLETE, Stage.ABORTED):
@@ -66,7 +70,8 @@ class Coordinator:
         if len(candidate_fingerprint) < 32:
             raise Rejected("candidate identity fingerprint missing/too short")
         p = Replacement(foreign_id, self.inventory.generation + 1,
-                        transport, candidate_fingerprint, stage=Stage.PREPARING)
+                        transport, candidate_fingerprint, stage=Stage.PREPARING,
+                        auto_cleanup_preapproved=auto_cleanup_preapproved)
         p._event("candidate entered preparation; prior foreign retained")
         self.pending = p
         return p
@@ -110,11 +115,12 @@ class Coordinator:
         p._event(f"{gateway} applied generation {generation}")
         return p
 
-    def begin_drain(self, generation: int):
+    def begin_drain(self, generation: int, *, now: float | None = None):
         p = self._require(generation)
         if p.stage != Stage.APPLIED or not p.complete_on_both:
             raise Rejected("cannot drain old foreign without both apply ACKs")
         p.stage = Stage.DRAINING
+        p.drain_started_at = now
         p._event("old endpoint retained; graceful drain begun")
         return p
 
@@ -128,6 +134,29 @@ class Coordinator:
         p._event("operator approved cleanup after drain")
         # Bump the logical generation in-memory for subsequent proposals.
         # A REAL controller must persist the signed snapshot transactionally.
+        self.inventory = replace(self.inventory, generation=p.target_generation)
+        return p
+
+    def finish_auto(self, generation: int, *, now: float,
+                    current_old_flow_count: int,
+                    health_verified_on_both: bool,
+                    grace_seconds: float = 86400.0):
+        """Automated CLEANUP ELIGIBILITY in a future secure operator adapter.
+
+        Does not contact servers or delete files. Owner must preapprove cleanup
+        at proposal; minimum 1 hour grace even if caller supplies less.
+        """
+        p = self._require(generation)
+        if not p.auto_cleanup_preapproved:
+            raise Rejected("automatic cleanup requires explicit operator preapproval")
+        if p.stage != Stage.DRAINING or not p.complete_on_both:
+            raise Rejected("both gateways must apply before cleanup")
+        if p.drain_started_at is None or now < p.drain_started_at + max(grace_seconds, 3600):
+            raise Rejected("safety rollback window not elapsed")
+        if current_old_flow_count != 0 or not health_verified_on_both:
+            raise Rejected("old flows remain or new routes not healthy on both gateways")
+        p.stage = Stage.COMPLETE
+        p._event("safe cleanup eligible after dual ACK, health and drain; adapter must audit before deletion")
         self.inventory = replace(self.inventory, generation=p.target_generation)
         return p
 
