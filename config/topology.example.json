@@ -1,0 +1,18 @@
+{
+  "kind": "EXAMPLE_ONLY_NOT_LIVE",
+  "generation": 1,
+  "gateways": [
+    {"id": "Maya1", "user_count_estimate": 145, "primaries": ["F1", "F2"], "emergency": ["F3", "F4"]},
+    {"id": "Maya3", "user_count_estimate": 145, "primaries": ["F3", "F4"], "emergency": ["F1", "F2"]}
+  ],
+  "foreigns": [
+    {"id": "F1", "transport": "naive", "capacity_gb_day_example": 300},
+    {"id": "F2", "transport": "xhttp-reality", "capacity_gb_day_example": 300},
+    {"id": "F3", "transport": "naive", "capacity_gb_day_example": 300},
+    {"id": "F4", "transport": "xhttp-reality", "capacity_gb_day_example": 300}
+  ],
+  "data_link": "tcp-only",
+  "client_udp": "release-gated-separately",
+  "client_config_change": false,
+  "actual_foreign_ips": "NEVER_COMMIT"
+}
