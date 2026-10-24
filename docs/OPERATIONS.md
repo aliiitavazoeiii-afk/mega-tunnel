@@ -12,7 +12,7 @@
 8. Controller issues COMMIT only when both PREPARE. Agents change policy for *new* flows using atomic generation swap, and provide verifiable ACK.
 9. If one fails, UI shows PARTIAL + remediation; old node stays safe. Reconcile with fencing and replay-safe generations. No blind failover to insecure/default transport.
 10. Run 1% → 10% → 25% → 50% → 100% traffic ramp only if app metrics and capacity hold. Move old active flows only through natural close or scheduled maintenance.
-11. After explicit 'drained and safe' + operator cleanup confirmation, decommission old foreign. Never automatically delete old server.
+11. After BOTH ACKs and verified canary, drain old flows; after the rollback grace expires and old flow count reaches zero, permit automatic decommission ONLY if it was explicitly preauthorized by the operator for this replacement. Otherwise require manual cleanup confirmation. Never delete immediately after a probe.
 12. Record audit ID, timestamps, two ACKs, health samples, new digest, optional rollback generation. Show operation success only at this point.
 
 ### Rollback
