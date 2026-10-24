@@ -1,0 +1,25 @@
+# No private keys, credentials or runtime user data in this public repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*secret*
+*password*
+*token*
+*bundle*.json
+*private*
+*.db
+*.sqlite*
+*.log
+*.bak
+*.backup
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
