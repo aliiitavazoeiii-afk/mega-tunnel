@@ -19,7 +19,7 @@ Read `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/A
 
 ### One-place foreign replacement
 
-Dashboard → select F1–F4 → register replacement → install on new foreign from a **version-pinned, authenticated** installer → test from BOTH Iran gateways → prepare both → atomic generation change / verify acknowledgements → start new connections → drain old → explicitly approve old-node cleanup.
+Dashboard → select F1–F4 → register replacement → install on new foreign from a **version-pinned, authenticated** installer → test from BOTH Iran gateways → prepare both → atomic generation change / verify acknowledgements → start new connections → drain old → preauthorize delayed automatic old-node cleanup (or explicitly confirm manual cleanup); never delete before drain and rollback checks.
 
 A replacement is a **logical foreign node ID**, not a mutable IP in two unrelated local files. Both Maya1 and Maya3 derive from the same versioned inventory. Never turn off the old node until the new node is verified, committed and recoverable.
 
