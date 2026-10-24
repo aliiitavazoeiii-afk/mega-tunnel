@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Mega Tunnel · Console Prototype</title>
+<style>
+:root{font-family:Tahoma,Arial,sans-serif;color:#e4ebf3;background:#0b1220;--bg:#0b1220;--panel:#111d30;--line:#29384b;--muted:#94a5b9;--green:#3bd3ae;--blue:#77b6ff;--amber:#ffbf69}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}header{padding:20px 5%;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-size:19px;font-weight:800;letter-spacing:.1px}.brand b{color:var(--green)}.tag{font-size:11px;border:1px solid #9f6d28;background:#543a163b;border-radius:20px;color:#ffd79d;padding:6px 12px}
+.layout{max-width:1320px;margin:auto;display:grid;grid-template-columns:210px minmax(0,1fr);gap:26px;padding:30px 5%}
+nav{display:flex;flex-direction:column;gap:8px}.nav{border:0;background:none;text-align:right;padding:13px 16px;border-radius:10px;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}.nav.active{background:#173447;color:#d3fff4}
+main{min-width:0}.eyebrow{color:var(--green);font-size:12px;letter-spacing:1px}h1{font-size:26px;margin:8px 0 7px}p{color:var(--muted);font-size:13px;line-height:2;margin:0 0 16px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:23px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:19px}.metric-title{color:var(--muted);font-size:12px}.metric-value{font-size:27px;font-weight:800;margin:14px 0 4px;direction:ltr;text-align:right}.metric-foot{font-size:11px;color:#a7bdc7}
+section{margin:24px 0}h2{font-size:17px;margin:0 0 14px}.fleet{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.node-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.node-name{font-size:17px;font-weight:800}.badge{border-radius:20px;padding:5px 9px;font-size:10px;color:var(--green);background:#1c423e}.chip{color:#b9d8ff;background:#203952;padding:5px 9px;border-radius:7px;font-size:11px}
+.edge{display:grid;grid-template-columns:1fr auto;align-items:center;margin-top:13px;padding-top:12px;border-top:1px solid var(--line);gap:8px;font-size:12px}.edge span{color:var(--muted)}.dot{display:inline-block;background:var(--green);width:7px;height:7px;border-radius:50%;margin-left:7px}.button{display:inline-flex;justify-content:center;align-items:center;gap:6px;border-radius:9px;border:1px solid #376a73;background:#183b49;color:#d8fff9;font:inherit;font-size:12px;font-weight:700;padding:10px 15px;cursor:pointer}.button:hover{filter:brightness(1.14)}.button:focus-visible,.nav:focus-visible{outline:2px solid #a5e9ff}
+.node-actions{margin-top:15px;display:flex;gap:8px;justify-content:flex-end}.note{font-size:12px;color:#b7c5d5;background:#17263b;border:1px solid #33475b;padding:15px 18px;border-radius:11px;line-height:2}
+.stepper{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0 20px}.step{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#142235;color:#cad4df;font-size:11px}
+dialog{border:1px solid #446076;border-radius:16px;background:#101d30;color:#e4ebf3;padding:26px;width:min(560px,95vw);box-shadow:0 20px 80px #0008}dialog::backdrop{background:#000a}dialog h2{margin-bottom:10px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;flex-wrap:wrap}
+button:disabled{opacity:.45;cursor:not-allowed}.muted{color:var(--muted)}.hidden{display:none!important}
+@media(max-width:950px){.layout{grid-template-columns:1fr;padding:17px 4%}nav{flex-direction:row;flex-wrap:wrap}.metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){header{padding:15px 4%}.fleet{grid-template-columns:1fr}.metrics{gap:8px}.card{padding:15px}.metric-value{font-size:23px}.nav{padding:9px 12px}.layout{gap:8px}}
+</style>
+</head>
+<body>
+<header><div class="brand">MEGA <b>TUNNEL</b> <small class="muted">/ Control Room</small></div><div class="tag">پیش‌نمایش آفلاین — هیچ سروری متصل نیست</div></header>
+<div class="layout">
+<nav aria-label="ناوبری">
+<button class="nav active" data-section="overview">نمای کلی</button>
+<button class="nav" data-section="foreign">سرورهای خارجی</button>
+<button class="nav" data-section="operations">تعویض و هماهنگی</button>
+<button class="nav" data-section="security">امنیت و ممیزی</button>
+</nav>
+<main>
+<div class="eyebrow">CONTROL PLANE / DESIGN PREVIEW</div>
+<h1 id="pageTitle">مدیریت یکپارچه Maya1 و Maya3</h1>
+<p id="subtitle">دو سرور ایران، چهار Foreign مشترک، دو انتقال مستقل TCP و یک سیاست کنترل‌پذیر برای Failover.</p>
+<div class="metrics">
+  <div class="card"><div class="metric-title">کاربران (تخمین)</div><div class="metric-value">290</div><div class="metric-foot">145 در هر Maya</div></div>
+  <div class="card"><div class="metric-title">حجم هدف روزانه</div><div class="metric-value">500 GB</div><div class="metric-foot">جمع دو سرور ایران</div></div>
+  <div class="card"><div class="metric-title">Foreign مشترک</div><div class="metric-value">4</div><div class="metric-foot">دو Naive + دو XHTTP</div></div>
+  <div class="card"><div class="metric-title">نسخهٔ سیاست نمونه</div><div class="metric-value">G1</div><div class="metric-foot">در محیط واقعی هنوز وجود ندارد</div></div>
+</div>
+<section id="overview">
+<h2>نمای مسیرهای دو Maya</h2>
+<div class="fleet" id="fleet"></div>
+</section>
+<section id="foreign" class="hidden">
+<h2>چهار Foreign با هویت ثابت</h2>
+<div class="fleet" id="foreignFleet"></div>
+</section>
+<section id="operations" class="hidden">
+<h2>تعویض امن سرور خارجی</h2>
+<div class="note">انتخاب F1 تا F4 → بررسی تاثیر روی هر دو Maya → فرمان نصب امضاشده و موقت → تایید شبکه از دو طرف → PREPARE → COMMIT → دو ACK → Canary → Drain → حذف با تایید مجدد. در این پیش‌نمایش هیچ دکمه‌ای به سرور واقعی فرمان نمی‌دهد.</div>
+<div style="margin-top:16px" class="fleet" id="replaceButtons"></div>
+</section>
+<section id="security" class="hidden">
+<h2>قفل‌های امنیتی پروژه</h2>
+<div class="note">عدم تغییر کانفیگ کاربران؛ ممنوعیت Restart سراسری برای خرابی یک Carrier؛ ممنوعیت fallback بدون رمزنگاری؛ تایید هویت دو Gateway؛ امضای نسخهٔ تنظیمات و جلوگیری از replay؛ حذف سرور قدیمی فقط با تایید صریح؛ و اعلام وضعیت PARTIAL به جای موفقیت در صورت عدم هماهنگی Maya1 و Maya3.</div>
+</section>
+<p class="note">این صفحه صرفاً نمونهٔ رابط کاربری است. آمار و وضعیت‌های نشان‌داده‌شده واقعی نیستند، عملیات مدیریت از راه دور در این نسخه غیرفعال است، و تا تکمیل mTLS، RBAC/MFA و کنترلر تراکنشی نباید به سرور عمومی متصل شود.</p>
+</main></div>
+<dialog id="wizard" aria-labelledby="wizardTitle">
+<h2 id="wizardTitle">بررسی تعویض Foreign</h2>
+<p id="wizardDescription"></p>
+<div class="stepper">
+<span class="step">۱. پیش‌نمایش اثر</span><span class="step">۲. نصب نسخهٔ امضاشده</span><span class="step">۳. تست Maya1 و Maya3</span><span class="step">۴. Prepare</span><span class="step">۵. Commit و دو ACK</span><span class="step">۶. تخلیه و Cleanup</span>
+</div>
+<div class="note">در نسخهٔ نهایی، تا ACK معتبر Maya1 و Maya3 نرسد، تعویض موفق اعلام نمی‌شود. در حالت آزمایشی هیچ نصب یا تعویضی اجرا نمی‌شود.</div>
+<div class="modal-actions"><button class="button" id="closeWizard">بستن</button><button class="button" disabled title="کنترلر امن هنوز متصل نیست">شروع تعویض — غیرفعال</button></div>
+</dialog>
+<script>
+"use strict";
+const nodes=[
+  {id:"F1",transport:"NaiveProxy",primary:"Maya1"},
+  {id:"F2",transport:"XHTTP/REALITY",primary:"Maya1"},
+  {id:"F3",transport:"NaiveProxy",primary:"Maya3"},
+  {id:"F4",transport:"XHTTP/REALITY",primary:"Maya3"}
+];
+const fleet=document.querySelector("#fleet"),foreignFleet=document.querySelector("#foreignFleet"),replaceButtons=document.querySelector("#replaceButtons");
+function makeCard(n){
+const el=document.createElement("article");el.className="card";
+el.innerHTML='<div class="node-head"><span class="node-name"></span><span class="chip"></span></div><div class="edge"><span>Maya1 → مسیر اصلی/اضطراری</span><b>نمونه</b></div><div class="edge"><span>Maya3 → مسیر اصلی/اضطراری</span><b>نمونه</b></div><div class="node-actions"><button type="button" class="button">بررسی تعویض</button></div>';
+el.querySelector(".node-name").textContent=n.id;
+el.querySelector(".chip").textContent=n.transport;
+el.querySelectorAll(".edge")[0].querySelector("span").textContent="Maya1: "+(n.primary==="Maya1"?"اصلی":"اضطراری");
+el.querySelectorAll(".edge")[1].querySelector("span").textContent="Maya3: "+(n.primary==="Maya3"?"اصلی":"اضطراری");
+el.querySelector("button").addEventListener("click",()=>openWizard(n));
+return el;
+}
+nodes.forEach(n=>{fleet.append(makeCard(n));foreignFleet.append(makeCard(n));
+const btn=document.createElement("button");btn.className="button";btn.textContent="پیش‌نمایش تعویض "+n.id;btn.addEventListener("click",()=>openWizard(n));replaceButtons.append(btn);});
+const dlg=document.querySelector("#wizard");
+function openWizard(n){
+ document.querySelector("#wizardTitle").textContent="تعویض "+n.id+" — "+n.transport;
+ document.querySelector("#wizardDescription").textContent="این Foreign برای "+n.primary+" مسیر اصلی و برای سرور دیگر مسیر اضطراری است. تعویض نهایی باید در هر دو Maya به‌صورت یک نسل هماهنگ اعمال شود.";
+ dlg.showModal();
+}
+document.querySelector("#closeWizard").addEventListener("click",()=>dlg.close());
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>{
+document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x===b));
+for(const id of ["overview","foreign","operations","security"])document.querySelector("#"+id).classList.toggle("hidden",id!==b.dataset.section);
+document.querySelector("#pageTitle").textContent=({overview:"مدیریت یکپارچه Maya1 و Maya3",foreign:"چهار سرور خارجی مشترک",operations:"تعویض هماهنگ Foreign",security:"قواعد امنیتی غیرقابل حذف"})[b.dataset.section];
+}));
+</script>
+</body></html>
