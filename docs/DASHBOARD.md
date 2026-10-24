@@ -14,7 +14,7 @@ Theme: accessible high-contrast dark and light. No real foreign IPs visible by d
 ## Buttons and semantics
 Replace is gated by RBAC, MFA, healthy old-path fallback and inventory lock. No single-click destructive swap. Preview is never apply.
 'Applied' means BOTH gateways acknowledged that generation and active new-flow route validation completed; until then 'Partially applied' is a WARNING with safe rollback.
-Delete old foreign is disabled until canary burn-in and drain checks are satisfied; requires separate confirmation.
+Delete old foreign is disabled until canary burn-in, dual ACKs, old-flow drain and rollback grace are satisfied. Permit preauthorized automatic cleanup (opt-in at replacement start), otherwise separate confirmation.
 
 ## Dashboard/backend API (future)
 - GET /api/v1/topology → scrubbed inventory snapshot and current_generation
