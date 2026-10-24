@@ -4,7 +4,7 @@ No network I/O, no SSH, no production controller: a correctness/test foundation.
 The controller adapter must durably persist transitions, authenticate ACKs and
 provide monotonic signed epochs before this can operate on real gateways.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Dict, FrozenSet
 from .models import Inventory, Transport
@@ -126,8 +126,9 @@ class Coordinator:
             raise Rejected("drain and explicit old-node cleanup approval needed")
         p.stage = Stage.COMPLETE
         p._event("operator approved cleanup after drain")
-        # A REAL controller persists the new topology and signed generation here.
-        # Domain model must not pretend to have changed live inventory.
+        # Bump the logical generation in-memory for subsequent proposals.
+        # A REAL controller must persist the signed snapshot transactionally.
+        self.inventory = replace(self.inventory, generation=p.target_generation)
         return p
 
     def _require(self, generation: int) -> Replacement:
