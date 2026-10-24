@@ -15,10 +15,12 @@ git clone https://github.com/aliiitavazoeiii-afk/mega-tunnel.git /opt/mega-tunne
 cd /opt/mega-tunnel
 git rev-parse HEAD
 sudo bash ops/preflight-iran.sh
+sudo python3 ops/audit-xui294.py
+sudo python3 ops/diagnose-tcp.py --interval 5
 python3 -m unittest discover -s tests -v
 ```
 
-This clones a repository to a NEW directory; it does not install a daemon, touch frp-tunnel, alter firewall or edit x-ui. Verify the reported Git commit SHA before authorizing production changes.
+This clones a repository to a NEW directory; it does not install a daemon, touch frp-tunnel, alter firewall or edit x-ui. The strict x-ui audit may exit 2 if a version/schema requirement is unmet; DO NOT force it to pass by changing the live panel. Verify the reported Git commit SHA before authorizing production changes.
 
 **Foreign preflight (on EACH candidate Foreign F1 through F4; read-only):**
 
