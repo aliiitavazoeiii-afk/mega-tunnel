@@ -69,6 +69,45 @@ class LabProxyTests(unittest.IsolatedAsyncioTestCase):
             await server.wait_closed()
             await upstream.wait_closed()
 
+    async def test_40_parallel_flows_no_shared_single_tcp_socket(self):
+        upstream = await asyncio.start_server(mock_socks, "127.0.0.1", 0)
+        upstream_port = upstream.sockets[0].getsockname()[1]
+        router = LabRouter("Maya1", {"F1": upstream_port}, max_connections=80)
+        server = await asyncio.start_server(router.handle, "127.0.0.1", 0)
+        local_port = server.sockets[0].getsockname()[1]
+        try:
+            outcomes = await asyncio.wait_for(
+                asyncio.gather(*(run_one_request(local_port) for _ in range(40))),
+                timeout=15
+            )
+            self.assertEqual(len(outcomes), 40)
+            for response, payload in outcomes:
+                self.assertEqual(response[:2], b"\x05\x00")
+                self.assertEqual(payload, b"pong")
+        finally:
+            server.close()
+            upstream.close()
+            await server.wait_closed()
+            await upstream.wait_closed()
+
+    async def test_retry_alternate_transport_on_new_connect(self):
+        upstream = await asyncio.start_server(mock_socks, "127.0.0.1", 0)
+        upstream_port = upstream.sockets[0].getsockname()[1]
+        router = LabRouter("Maya1", {"F1": 65498, "F2": upstream_port})
+        router.active["F2"] = 1500  # prefer trying broken F1 first
+        server = await asyncio.start_server(router.handle, "127.0.0.1", 0)
+        local_port = server.sockets[0].getsockname()[1]
+        try:
+            response, payload = await run_one_request(local_port)
+            self.assertEqual(response[:2], b"\x05\x00")
+            self.assertEqual(payload, b"pong")
+            self.assertGreaterEqual(router.failures["F1"], 1)
+        finally:
+            server.close()
+            upstream.close()
+            await server.wait_closed()
+            await upstream.wait_closed()
+
     async def test_no_direct_fallback_when_upstream_down(self):
         router = LabRouter("Maya1", {"F1": 65499})
         server = await asyncio.start_server(router.handle, "127.0.0.1", 0)
