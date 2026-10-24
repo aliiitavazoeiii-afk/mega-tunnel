@@ -12,9 +12,13 @@ jobs:
       - name: Python version
         run: python3 --version
       - name: Static syntax checks
-        run: python3 -m compileall -q mega_tunnel tests
+        run: |
+          python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
+      - name: Verify standalone diagnostics have no compile errors
+        run: python3 -m py_compile ops/diagnose-tcp.py
       - name: Requirement files must exist
         run: |
           test -s docs/REQUIREMENTS.md
