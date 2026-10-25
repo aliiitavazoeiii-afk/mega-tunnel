@@ -76,7 +76,10 @@ c={
 fd=os.open(config_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o640)
 with os.fdopen(fd,"w") as f: json.dump(c,f,indent=2)
 PY
+# umask 077 masked the group-read bit passed to os.open(0640).
+# Explicitly restore ONLY owner/group read before unprivileged service check.
 chown root:mega-tunnel "$D/client.json"
+chmod 0640 "$D/client.json"
 runuser -u mega-tunnel -- test -r "$D/client.json" ||
  { echo "Naive system user cannot read its config; aborting before start" >&2; exit 1; }
 cat > "/etc/systemd/system/$SERVICE.service" <<EOF
