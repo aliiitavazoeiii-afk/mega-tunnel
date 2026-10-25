@@ -14,7 +14,7 @@ jobs:
       - name: Static syntax checks
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/audit-xui294.py
-          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/install-naive-lab-iran.sh ops/test-naive-lab.sh
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
       - name: Verify standalone diagnostics have no compile errors
@@ -29,6 +29,11 @@ jobs:
           grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-foreign.sh
           grep -Fq 'chmod 0710 /etc/mega-tunnel' ops/install-naive-lab-iran.sh
           grep -Fq 'runuser -u mega-tunnel -- test -r "$D/client.json"' ops/install-naive-lab-iran.sh
+          grep -Fq 'chmod 0710 "$BASE"' ops/resume-naive-lab-iran.sh
+          grep -Fq 'no changes to x-ui' ops/resume-naive-lab-iran.sh
+          grep -Fq 'Existing client.json differs' ops/resume-naive-lab-iran.sh
+          grep -Fq "socks5h://127.0.0.1:" ops/resume-naive-lab-iran.sh
+          ! grep -Eq 'apt-get|systemctl (restart|stop|disable) x-ui' ops/resume-naive-lab-iran.sh
           grep -Fq 'chmod 0710 "$parent"' ops/install-naive-lab-foreign.sh
           grep -Fq 'chmod 0710 "$parent"' ops/repair-naive-lab-foreign.sh
           grep -Fq 'runuser -u mega-tunnel -- test -r' ops/repair-naive-lab-foreign.sh
