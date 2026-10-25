@@ -1,6 +1,6 @@
-# Implementation status — 2026-10-24
+# Implementation status — 2026-10-25
 
-**NOT PRODUCTION READY.** Maya1 now has field-verified isolated F1 Naive and F2 XHTTP+REALITY TCP loopback carriers; both independently passed 5/5 HTTPS 204 requests. No paying users routed to Mega; x-ui user configurations remain unchanged. Stage3 local-only router code is ready for Maya1 field trial, not yet deployed or verified on server.
+**NOT PRODUCTION READY.** Maya1 now has field-verified isolated F1 Naive and F2 XHTTP+REALITY TCP loopback carriers; both independently passed 5/5 HTTPS 204 requests. No paying users routed to Mega; x-ui user configurations remain unchanged. Stage3 local-only router is field-verified with 10/10 HTTPS requests, fault-gate failover integration passed, and both paths were observed carrying data; production x-ui routing is still unchanged.
 
 ## 2026-10-25 — Stage 1 Naive TCP lab (FIELD-VERIFIED)
 
@@ -14,20 +14,25 @@
 ## 2026-10-25 — Stage2 F2 XHTTP + REALITY pilot (FIELD-VERIFIED)
 
 - Official Xray examples for VLESS XHTTP + REALITY inspected; TCP-only `stream-one` experimental configuration constructed for separate F2 (Maya1) / F4 (Maya3).
-- `ops/install-xhttp-lab-foreign.sh`: dedicated F2/F4 non-root Xray listener, upstream ZIP v26.9.8 pinned SHA256, generated per-lab REALITY X25519 keys, credentials and protected private F2 bundle.
+- `ops/install-xhttp-lab-foreign.sh`: dedicated F2/F4 non-root Xray listener, upstream ZIP v26.9.30 pinned SHA256, generated per-lab REALITY X25519 keys, credentials and protected private F2 bundle.
 - `ops/install-xhttp-lab-iran.sh`: install from securely copied, hash-matched foreign binary and private bundle (no internet downloads/apt on memory-constrained Maya1), bind loopback SOCKS at 17996 for F2 or 17998 for F4, keep x-ui and Naive F1 untouched.
 - `ops/test-two-paths-maya1.sh`: lightweight sequential 5-request per-carrier smoke tests.
 - `docs/STAGE2-XHTTP-LAB.md`: exact manual install, security and acceptance limits.
 - F2 foreign actual Xray v26.9.30 service active on TCP 443 and private bundle verified; Maya1 client XHTTP + REALITY installed and confirmed **5/5 HTTP 204**, zero restarts. Additional two-path checks gave F1=5/5 and F2=5/5. This is isolated flow testing, not application load verification.
 - Maya1 VMware balloon 0 MB and 1.5 GiB available after rebuild; do not infer 290-user load capacity.
 
-## 2026-10-25 — Stage3 dual-route lab (SOURCE READY, NOT DEPLOYED)
+## 2026-10-25 — Stage3 dual-route lab (FIELD TESTED, LAB ONLY)
 
 - Added real end-to-end TLS/HTTPS verified carrier monitor with low-noise probes every 45s, per-carrier circuit state and fail-closed if both inaccessible; simulated tests passed.
 - Extended existing `mega_tunnel/lab_proxy.py` to admit only carrier paths with fresh verified health, isolate failed routes on *new* SOCKS CONNECTs and not globally restart transports.
 - `ops/install-two-path-router-lab.sh` creates only a loopback `127.0.0.1:17990` unprivileged lab service, never edits x-ui or customer inbounds; `ops/test-two-path-router-lab.sh` tests real HTTP 204 through that local router.
 - `docs/STAGE3-TWO-PATH-ROUTER-LAB.md` documents user-run install, test, and safe router-only disable.
-- **Field verification on actual Maya1 of the Stage3 combined router is still outstanding.** Controller, global quotas, x-ui adapter, UDP, parallel load and verified real-world failover are NOT implemented.
+- Operator field test on Maya1 combined lab router 127.0.0.1:17990: **10/10 HTTP 204**, all four including x-ui active, no restart, available RAM ~1.4GiB, balloon 0 MB.
+- Local ephemeral fault gate test passed: both live, F1 simulated down -> real F2 (3/3), F2 down -> real F1 (3/3), both down -> fail closed, one carrier recovered. No actual foreign blocked or user impacted.
+- Dual-path ephemeral distribution 16/16 HTTPS 204: F1 44,643 lab TCP payload bytes (62.5%), F2 26,808 (37.5%). These figures are **NOT** authoritative provider egress bytes or equal daily quota enforcement.
+- Rebuilt Maya1 x-ui runtime audit: exactly one enabled inbound on public TCP 443, Xray engine process listening on 443, Xray API localhost 62789 and metrics 11111, panel ports 2095/2096, no x-ui restarts. xrayTemplateConfig absent in SQLite is compatible with embedded upstream defaults in version 2.9.4; this is not evidence of a missing config.
+- Newly added read-only `ops/audit-xui294-runtime.py` counts anonymized per-inbound client JSON and traffic rows; still must be run on Maya1 before making any x-ui integration changes.
+- Durable global daily quota, user QoE, production x-ui adapter, UDP, peak concurrency tests and real-world foreign censorship failover are NOT implemented.
 
 ## Implemented and committed
 - 30 fixed product requirements and anti-downgrade security/operational contract.
