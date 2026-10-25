@@ -30,10 +30,13 @@ runuser -u mega-tunnel -- test -w "$STATE/config" ||
  { echo "service user cannot write TLS config path" >&2; exit 1; }
 echo "Foreign service directory traversal: FIXED; private file permissions preserved"
 # Keep accidental logs free of secrets: never print the Caddyfile itself.
-systemctl stop "$SERVICE"
-systemctl reset-failed "$SERVICE"
-systemctl start "$SERVICE"
-sleep 3
+if systemctl is-active --quiet "$SERVICE"; then
+ echo "Foreign service already active: leaving running process untouched"
+else
+ systemctl reset-failed "$SERVICE"
+ systemctl start "$SERVICE"
+ sleep 3
+fi
 if ! systemctl is-active --quiet "$SERVICE"; then
  echo "Service still failing. Check: journalctl -u $SERVICE -n 35 --no-pager" >&2
  exit 1
@@ -48,18 +51,29 @@ if len(hits)!=1: raise SystemExit("Expected exactly one HTTPS hostname")
 print(hits[0])
 PY
 )
+# A working authenticated forward_proxy intentionally responds HTTP 407
+# to a client without proxy credentials. curl -f incorrectly treats this as
+# a fatal TLS failure; normal curl (without -k or -f) validates the certificate.
+# --noproxy '*' ensures the probe goes directly to loopback Caddy, not via any
+# inherited HTTPS_PROXY environment variable.
 READY=0
+CODE=''
 for i in $(seq 1 30); do
- if curl -4 -fsS --connect-timeout 4 --max-time 8 \
-   --resolve "$DOMAIN:443:127.0.0.1" -o /dev/null "https://$DOMAIN/"; then
-    READY=1; break
+ if CODE=$(curl -4 --noproxy '*' -sS --connect-timeout 4 --max-time 8 \
+      --resolve "$DOMAIN:443:127.0.0.1" -o /dev/null \
+      -w '%{http_code}' "https://$DOMAIN/" 2>/dev/null); then
+   if [[ "$CODE" == 407 ]]; then
+     READY=1
+     break
+   fi
+   echo "HTTPS certificate verified, but expected proxy auth 407; got HTTP $CODE" >&2
  fi
  systemctl is-active --quiet "$SERVICE" ||
    { echo "Service exited during TLS setup" >&2; exit 1; }
  sleep 2
 done
-(( READY == 1 )) || { echo "Service runs, but valid trusted TLS not ready; check DNS/firewall/ACME" >&2; exit 1; }
-echo "F1/F3 Naive Caddy: active. Trusted HTTPS certificate test: PASS"
+(( READY == 1 )) || { echo "No valid HTTPS proxy-auth 407 observed; inspect Caddy TLS/auth logs" >&2; exit 1; }
+echo "F1/F3 Naive Caddy: active. Validated TLS + HTTP 407 auth challenge: PASS"
 read -r -p 'Enter this foreign public IPv4 to finish private bundle: ' FOREIGN_IP
 python3 - "$CONF" "$BUNDLE" "$ROLE" "$DOMAIN" "$FOREIGN_IP" <<'PY'
 import ipaddress,json,os,re,socket,sys
