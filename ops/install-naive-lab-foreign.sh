@@ -68,7 +68,7 @@ cat > "$D/Caddyfile" <<EOF
 {
   order forward_proxy before file_server
 }
-$DOMAIN {
+:443, $DOMAIN {
   tls $EMAIL
   forward_proxy {
     basic_auth $NAME $PASS
