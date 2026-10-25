@@ -21,7 +21,7 @@ jobs:
         run: python3 -m py_compile ops/diagnose-tcp.py ops/audit-xui294.py
       - name: Stage1 lab security guards
         run: |
-          grep -Fq 'No x-ui' ops/install-naive-lab-foreign.sh
+          grep -Fq 'x-ui, Iran routing, UDP' ops/install-naive-lab-foreign.sh
           grep -Fq 'socks://127.0.0.1:' ops/install-naive-lab-iran.sh
           grep -Fq 'sha256sum -c -' ops/install-naive-lab-foreign.sh
           grep -Fq 'sha256sum -c -' ops/install-naive-lab-iran.sh
