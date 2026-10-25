@@ -111,6 +111,8 @@ systemctl daemon-reload
 if systemctl is-active --quiet "$UNIT"; then
  echo "Service already active, preserving current connections"
 else
+ # Clear a prior crash/restart loop of ONLY this lab unit. No x-ui action.
+ systemctl stop "$UNIT" 2>/dev/null || true
  if ss -H -ltn "sport = :$PORT" | grep -q .; then
    echo "Local TCP port $PORT is already occupied by another process; STOP" >&2; exit 1
  fi
