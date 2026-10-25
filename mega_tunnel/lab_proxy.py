@@ -103,7 +103,7 @@ async def pump(r, w):
 
 
 class LabRouter:
-    def __init__(self, gateway, upstreams, *, max_connections=256):
+    def __init__(self, gateway, upstreams, *, max_connections=256, monitor=None):
         if gateway not in ("Maya1", "Maya3"):
             raise ValueError("invalid gateway identity")
         inventory = reference_inventory()
@@ -121,18 +121,25 @@ class LabRouter:
         self.active = {name: 0 for name in inventory.foreigns}
         self.sem = asyncio.Semaphore(max_connections)
         self.failures = {name: 0 for name in inventory.foreigns}
+        self.monitor = monitor
+        self.flow_seq = 0
 
     def choose(self, excluded):
         edges = [
             Edge(self.gateway, f, EdgeState.HEALTHY, rtt_ms=50,
                  error_rate=min(self.failures[f] / 20.0, 1.0),
                  active_connections=self.active[f],
-                 reachable=f not in excluded)
+                 reachable=(f not in excluded and
+                            (self.monitor is None or self.monitor.allowed(f)))
             for f in self.upstreams
         ]
+        # Do not use a fixed empty affinity that selects only one node forever
+        # for equal-size sequential requests. This remains lab-level fairness,
+        # NOT global quotas or measured cross-gateway daily traffic.
+        self.flow_seq += 1
         return self.router.choose(
             self.gateway, edges, TrafficSnapshot(self.byte_totals),
-            allow_emergency=True
+            flow_affinity=str(self.flow_seq), allow_emergency=False
         ).foreign_id
 
     async def handle(self, reader, writer):
@@ -154,6 +161,8 @@ class LabRouter:
                     except (OSError, ValueError, TimeoutError, asyncio.TimeoutError,
                             asyncio.IncompleteReadError):
                         self.failures[node] += 1
+                        if self.monitor is not None:
+                            self.monitor.report_connect_failure(node)
                         excluded.add(node)
                 if upstream is None:
                     writer.write(b"\x05\x04\x00\x01" + b"\0"*6)
@@ -201,12 +210,26 @@ def parse_config(path):
 
 async def serve(config):
     gateway, port, upstreams = parse_config(config)
-    router = LabRouter(gateway, upstreams)
-    server = await asyncio.start_server(router.handle, "127.0.0.1", port,
-                                        limit=MAX_BUFFER)
-    print("LAB-ONLY listening on 127.0.0.1:17990 (no x-ui changes)", flush=True)
-    async with server:
-        await server.serve_forever()
+    from .lab_health import CarrierMonitor
+    monitor = CarrierMonitor(upstreams)
+    router = LabRouter(gateway, upstreams, monitor=monitor)
+    # Verify real TLS and HTTP over both carriers; local listeners alone
+    # do not establish health. Remain fail-closed until real probes pass.
+    await monitor.check_all()
+    monitor_task = asyncio.create_task(monitor.run())
+    try:
+        server = await asyncio.start_server(router.handle, "127.0.0.1", port,
+                                            limit=MAX_BUFFER)
+        print("LAB-ONLY verified-path router listening on 127.0.0.1:17990 "
+              "(no x-ui changes)", flush=True)
+        async with server:
+            await server.serve_forever()
+    finally:
+        monitor_task.cancel()
+        try:
+            await monitor_task
+        except asyncio.CancelledError:
+            pass
 
 
 def main():
