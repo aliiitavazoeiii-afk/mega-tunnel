@@ -27,6 +27,8 @@ jobs:
           grep -Fq 'sha256sum -c -' ops/install-naive-lab-iran.sh
           grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-iran.sh
           grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-foreign.sh
+          grep -Fq 'chmod 0710 /etc/mega-tunnel' ops/install-naive-lab-iran.sh
+          grep -Fq 'runuser -u mega-tunnel -- test -r "$D/client.json"' ops/install-naive-lab-iran.sh
           grep -Fq 'chmod 0710 "$parent"' ops/install-naive-lab-foreign.sh
           grep -Fq 'chmod 0710 "$parent"' ops/repair-naive-lab-foreign.sh
           grep -Fq 'runuser -u mega-tunnel -- test -r' ops/repair-naive-lab-foreign.sh
