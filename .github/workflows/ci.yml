@@ -30,6 +30,9 @@ jobs:
           grep -Fq 'chmod 0710 "$parent"' ops/install-naive-lab-foreign.sh
           grep -Fq 'chmod 0710 "$parent"' ops/repair-naive-lab-foreign.sh
           grep -Fq 'runuser -u mega-tunnel -- test -r' ops/repair-naive-lab-foreign.sh
+          grep -Fq '[[ "$CODE" == 407 ]]' ops/repair-naive-lab-foreign.sh
+          grep -Fq -- "--noproxy '*'" ops/repair-naive-lab-foreign.sh
+          ! grep -Fq 'curl -4 -fsS' ops/repair-naive-lab-foreign.sh
           ! grep -Eq 'systemctl (restart|stop|disable) x-ui' ops/install-naive-lab-*.sh
       - name: Requirement files must exist
         run: |
