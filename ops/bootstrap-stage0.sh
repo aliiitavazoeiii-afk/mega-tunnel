@@ -13,7 +13,14 @@ BASE=/etc/mega-tunnel
 DATA=/var/lib/mega-tunnel
 echo "=== MEGA TUNNEL STAGE 0 :: $ROLE ==="
 echo "No VPN services or client routes will be changed."
-install -d -m 0700 "$BASE" "$DATA" "$DATA/backups"
+# Create missing directories once; never reset permissions on an existing
+# lab installation. F1/F2 use group execute-only access to the stage0 parent,
+# and re-running preflight must not make running clients unable to read configs.
+for dir in "$BASE" "$DATA" "$DATA/backups"; do
+ if [[ ! -e "$dir" ]]; then install -d -m 0700 "$dir"; fi
+ [[ -d "$dir" && ! -L "$dir" && $(stat -c %u "$dir") == 0 ]] ||
+   { echo "Unexpected stage0 directory type/owner: $dir" >&2; exit 1; }
+done
 python3 - "$BASE/stage0.json" "$ROLE" <<'PY'
 import json,os,sys,tempfile
 p,role=sys.argv[1:]
