@@ -130,7 +130,7 @@ class LabRouter:
                  error_rate=min(self.failures[f] / 20.0, 1.0),
                  active_connections=self.active[f],
                  reachable=(f not in excluded and
-                            (self.monitor is None or self.monitor.allowed(f)))
+                            (self.monitor is None or self.monitor.allowed(f))))
             for f in self.upstreams
         ]
         # Do not use a fixed empty affinity that selects only one node forever
