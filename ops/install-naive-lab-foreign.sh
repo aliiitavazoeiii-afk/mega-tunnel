@@ -66,9 +66,13 @@ $DOMAIN {
     hide_ip
     hide_via
   }
-  respond "Service ready" 200
+  root * /var/www/mega-tunnel/naive-fallback
+  file_server
 }
 EOF
+install -d -m 0755 /var/www/mega-tunnel/naive-fallback
+printf '%s\n' '<html><body>Service ready</body></html>' > /var/www/mega-tunnel/naive-fallback/index.html
+chmod 0644 /var/www/mega-tunnel/naive-fallback/index.html
 chown root:mega-tunnel "$D/Caddyfile"
 chmod 0640 "$D/Caddyfile"
 "$BIN/caddy-naive-v2.11.7" validate --config "$D/Caddyfile" --adapter caddyfile >/dev/null
