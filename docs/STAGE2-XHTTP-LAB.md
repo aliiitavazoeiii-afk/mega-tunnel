@@ -21,7 +21,7 @@ out-of-band and pinned to a single F2. Client port `127.0.0.1:17996`.
   no active customer migration, stage0 role `maya1`.
 - Independent authenticated SSH access from Maya1 to F2; verify SSH host
   key using VPS provider console. NEVER disable StrictHostKeyChecking.
-- Ballooning ~1278 MB remains on Maya1; **small smoke test only**, no load.
+- Re-check live available RAM and VMware Ballooning after Maya1 rebuild before any testing. This lab remains for small smoke tests only.
 
 ## 1. Deploy NEW F2 foreign
 
@@ -41,7 +41,7 @@ camouflage target. Do not enter the F1 foreign IP. No DNS record is
 required for the F2 endpoint because authorized REALITY clients dial F2's
 IP directly using the camouflage `serverName`.
 
-Pinned version: Xray `v26.9.8`, whose ZIP SHA256 is verified before
+Pinned version: Xray `v26.9.30`, whose ZIP SHA256 is verified before
 install. The installer creates its own x25519 keypair, UUID, short ID
 and XHTTP path, tests `xray run -test`, installs the separate nonroot
 systemd unit `mega-f2-xhttp-foreign.service`, and leaves private bundle:
@@ -49,7 +49,7 @@ systemd unit `mega-f2-xhttp-foreign.service`, and leaves private bundle:
 `/root/mega-f2-xhttp-client.json`.
 
 The copied executable for Maya1 is
-`/usr/local/lib/mega-tunnel/xray-v26.9.8`. Do not paste the bundle,
+`/usr/local/lib/mega-tunnel/xray-v26.9.30`. Do not paste the bundle,
 server JSON, private key, or path into a chat.
 
 ## 2. Copy F2 files securely to MAYA1 Iran
@@ -63,7 +63,7 @@ ssh root@F2_IPV4
 sudo scp -o StrictHostKeyChecking=yes \
  root@F2_IPV4:/root/mega-f2-xhttp-client.json /root/mega-f2-xhttp-client.json
 sudo scp -o StrictHostKeyChecking=yes \
- root@F2_IPV4:/usr/local/lib/mega-tunnel/xray-v26.9.8 /root/mega-f2-xray-bin
+ root@F2_IPV4:/usr/local/lib/mega-tunnel/xray-v26.9.30 /root/mega-f2-xray-bin
 sudo chmod 0600 /root/mega-f2-xhttp-client.json /root/mega-f2-xray-bin
 ```
 
