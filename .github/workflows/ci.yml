@@ -51,7 +51,7 @@ jobs:
           ! grep -Eq 'systemctl (restart|stop|disable) x-ui' ops/install-naive-lab-*.sh
       - name: Stage2 XHTTP REALITY isolation and verifiable artifacts
         run: |
-          grep -Fq "ZIPSHA='a8c6d5b53957600d7e18d16e697201a4c942fe823307deb039bf8f40587aa556'" ops/install-xhttp-lab-foreign.sh
+          grep -Fq "ZIPSHA='f851110beaff16e78d643f0ccfd9524b4a44dfd59bae3e34bb52bba378f7690e'" ops/install-xhttp-lab-foreign.sh
           grep -Fq 'sha256sum -c -' ops/install-xhttp-lab-foreign.sh
           grep -Fq '"network":"xhttp"' ops/install-xhttp-lab-foreign.sh
           grep -Fq '"security":"reality"' ops/install-xhttp-lab-foreign.sh
@@ -59,6 +59,8 @@ jobs:
           grep -Fq '"mode":"stream-one"' ops/install-xhttp-lab-iran.sh
           grep -Fq '"udp":False' ops/install-xhttp-lab-iran.sh
           grep -Fq 'xray_binary_sha256' ops/install-xhttp-lab-iran.sh
+          grep -Fq 'Password(?:' ops/install-xhttp-lab-foreign.sh
+          grep -Fq 'xray-v26.9.30' ops/install-xhttp-lab-iran.sh
           grep -Fq 'run -test -c' ops/install-xhttp-lab-foreign.sh
           grep -Fq 'run -test -c' ops/install-xhttp-lab-iran.sh
           grep -Fq 'socks5h://127.0.0.1:' ops/test-two-paths-maya1.sh
