@@ -42,6 +42,38 @@ sudo bash ops/test-naive-lab.sh maya1
 
 The Iran local service is `mega-f1-naive-client.service` with SOCKS5 TCP on `127.0.0.1:17995`; **no x-ui changes or public VPN inbound restarts**. The installer validates actual 204 HTTPS via the foreign.
 
+## Resuming an interrupted Iran install (safe, no re-download)
+
+If Iran installer prints `Existing lab configuration; refusing destructive reinstall`,
+**do not delete** `/etc/mega-tunnel/naive-f1` and do not rerun the original installer.
+
+On **Maya1 Iran** (after private F1 bundle was transferred):
+
+```bash
+cd /opt/mega-tunnel
+sudo git pull --ff-only
+sudo bash ops/resume-naive-lab-iran.sh maya1 /root/mega-f1-naive-client.json
+```
+
+The resume script verifies x-ui 2.9.4, the `maya1` stage0 role, private F1
+bundle and unchanged existing config. If the existing config doesn't match
+the F1 bundle it **stops without overwriting**. It repairs group traversal
+to allow the unprivileged Naive client to read its own config, creates a
+missing unit if required, and starts only an inactive Naive lab service.
+It does **not** download binaries or install packages. If the pinned
+`naive-v154` executable is missing, **stop** and investigate the partial
+install rather than forcing a reinstall.
+
+A healthy Naive service stays running; it is not restarted. For a crashing
+lab unit, the script stops/restarts only that lab unit and never touches
+x-ui, its ports, customer configurations or the default route.
+
+Tests make requests explicitly through local loopback SOCKS using
+`--proxy socks5h://127.0.0.1:17995 --noproxy ''`. Success verifies a
+small number of actual proxied TCP requests, not UDP/XHTTP, concurrent
+load, DPI resistance or cutover readiness. VMware memory ballooning on
+Maya1 is being investigated, so avoid load tests.
+
 ## Diagnostics
 
 ```bash
