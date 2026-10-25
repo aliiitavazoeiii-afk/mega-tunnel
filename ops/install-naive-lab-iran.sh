@@ -16,7 +16,7 @@ umask 077
 D="/etc/mega-tunnel/naive-$ROLE"
 BIN="/usr/local/lib/mega-tunnel"
 SERVICE="mega-$ROLE-naive-client"
-[[ ! -e "$D" ]] || { echo "Existing lab configuration; refusing destructive reinstall" >&2; exit 1; }
+[[ ! -e "$D" ]] || { echo "Existing lab configuration: use sudo bash ops/resume-naive-lab-iran.sh $GATEWAY $BUNDLE (no destructive reinstall)" >&2; exit 1; }
 if ss -H -ltn "sport = :$PORT" | grep -q .; then
  echo "TCP port $PORT already in use" >&2; exit 1
 fi
