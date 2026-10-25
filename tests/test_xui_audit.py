@@ -41,6 +41,9 @@ class XuiAuditTests(unittest.TestCase):
             db, b = self.create_fixture(d)
             result = audit.inspect(db, b)
             self.assertTrue(result["version_exact_2_9_4"])
+            self.assertEqual(result["xray_template_source"], "database_saved")
+            self.assertEqual(result["inbounds_total"], 1)
+            self.assertEqual(result["inbound_ports_sample"], [443])
             self.assertTrue(result["api_routing_rules_present"])
             self.assertEqual(result["public_443_inbounds"], 1)
             self.assertNotIn("NEVER_DISPLAY_THIS", json.dumps(result))
@@ -56,7 +59,13 @@ class XuiAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             db, b = self.create_fixture(d, template=False)
             result = audit.inspect(db, b)
-            self.assertIn("fatal", result)
+            self.assertNotIn("fatal", result)
+            self.assertEqual(result["xray_template_source"], "built_in_default_possible")
+            self.assertIsNone(result["xray_template_valid_json"])
+            self.assertIsNone(result["api_routing_rules_present"])
+            self.assertFalse(result.get("safe_to_plan_staged_adapter", False))
+            self.assertEqual(result["inbounds_total"], 1)
+            self.assertEqual(result["public_443_inbounds"], 1)
             with sqlite3.connect(db) as con:
                 self.assertEqual(
                     con.execute("SELECT count(*) FROM settings").fetchone()[0], 0
