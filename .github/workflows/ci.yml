@@ -15,7 +15,7 @@ jobs:
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/diagnose-naive-lab-iran.py ops/audit-xui294.py
           python3 ops/check-embedded-python.py
-          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/repair-naive-connect-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh ops/install-xhttp-lab-foreign.sh ops/install-xhttp-lab-iran.sh ops/test-two-paths-maya1.sh
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/repair-naive-connect-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh ops/install-xhttp-lab-foreign.sh ops/install-xhttp-lab-iran.sh ops/test-two-paths-maya1.sh ops/install-two-path-router-lab.sh ops/test-two-path-router-lab.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
       - name: Verify standalone diagnostics have no compile errors
@@ -68,6 +68,18 @@ jobs:
           grep -Fq 'socks5h://127.0.0.1:' ops/test-two-paths-maya1.sh
           ! grep -Eq 'apt-get|curl.*bash|systemctl (restart|stop|disable) x-ui' ops/install-xhttp-lab-iran.sh
           ! grep -Eq 'systemctl (restart|stop|disable) x-ui' ops/install-xhttp-lab-foreign.sh
+      - name: Stage3 dual carrier lab router isolation
+        run: |
+          grep -Fq 'lab_only' mega_tunnel/lab_proxy.py
+          grep -Fq 'await monitor.check_all()' mega_tunnel/lab_proxy.py
+          grep -Fq 'CarrierMonitor' mega_tunnel/lab_proxy.py
+          grep -Fq 'ssl.create_default_context()' mega_tunnel/lab_health.py
+          grep -Fq 'reader' mega_tunnel/lab_proxy.py
+          grep -Fq 'allow_emergency=False' mega_tunnel/lab_proxy.py
+          grep -Fq 'listen_host":"127.0.0.1"' ops/install-two-path-router-lab.sh || grep -Fq '"listen_host":"127.0.0.1"' ops/install-two-path-router-lab.sh
+          grep -Fq '127.0.0.1:17990' ops/test-two-path-router-lab.sh
+          grep -Fq 'test_two_path' tests/test_lab_health.py || grep -Fq 'test_failed_carrier_isolated' tests/test_lab_health.py
+          ! grep -Eq 'systemctl (stop|restart|disable) x-ui|ip route (add|del|replace)|iptables|nft add' ops/install-two-path-router-lab.sh
       - name: Requirement files must exist
         run: |
           test -s docs/REQUIREMENTS.md
