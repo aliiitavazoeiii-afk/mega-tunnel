@@ -51,6 +51,15 @@ install -m 0755 "$FILE" "$BIN/caddy-naive-v2.11.7"
 if ! id mega-tunnel >/dev/null 2>&1; then
  useradd --system --no-create-home --shell /usr/sbin/nologin mega-tunnel
 fi
+# stage0 creates the /etc and /var/lib parents root:root 0700.
+# The restricted Caddy service cannot traverse them otherwise.
+# Set group EXECUTE only on parents (not group READ), so all unrelated
+# root-owned 0600 secrets and backups remain private.
+for parent in /etc/mega-tunnel /var/lib/mega-tunnel; do
+ [[ -d "$parent" && -O "$parent" ]] || { echo "Unexpected parent ownership: $parent" >&2; exit 1; }
+ chgrp mega-tunnel "$parent"
+ chmod 0710 "$parent"
+done
 install -d -o root -g mega-tunnel -m 0750 "$D"
 install -d -o mega-tunnel -g mega-tunnel -m 0750 "$STATE" "$STATE/data" "$STATE/config"
 PASS=$(openssl rand -hex 32)
