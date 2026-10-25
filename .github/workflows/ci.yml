@@ -36,6 +36,7 @@ jobs:
           grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-iran.sh
           grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-foreign.sh
           grep -Fq 'chmod 0710 /etc/mega-tunnel' ops/install-naive-lab-iran.sh
+          grep -Fq 'chmod 0640 "$D/client.json"' ops/install-naive-lab-iran.sh
           grep -Fq 'runuser -u mega-tunnel -- test -r "$D/client.json"' ops/install-naive-lab-iran.sh
           grep -Fq 'chmod 0710 "$BASE"' ops/resume-naive-lab-iran.sh
           grep -Fq 'no changes to x-ui' ops/resume-naive-lab-iran.sh
