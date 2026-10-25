@@ -14,7 +14,7 @@ jobs:
       - name: Static syntax checks
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/diagnose-naive-lab-iran.py ops/audit-xui294.py
-          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/repair-naive-connect-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
       - name: Verify standalone diagnostics have no compile errors
@@ -22,6 +22,11 @@ jobs:
       - name: Stage1 lab security guards
         run: |
           grep -Fq 'x-ui, Iran routing, UDP' ops/install-naive-lab-foreign.sh
+          grep -Fq ':443, $DOMAIN {' ops/install-naive-lab-foreign.sh
+          grep -Fq "Authenticated HTTP/1.1 CONNECT example.com:443 =" ops/repair-naive-connect-foreign.sh
+          grep -Fq 'if code!="200":' ops/repair-naive-connect-foreign.sh
+          grep -Fq 'cp -p "$BACKUP" "$CONF"' ops/repair-naive-connect-foreign.sh
+          ! grep -Eq 'systemctl (restart|stop|disable) x-ui' ops/repair-naive-connect-foreign.sh
           grep -Fq 'socks://127.0.0.1:' ops/install-naive-lab-iran.sh
           grep -Fq 'CERTIFICATE VALIDATION ENABLED' ops/diagnose-naive-lab-iran.py
           grep -Fq '"--noproxy", "*"' ops/diagnose-naive-lab-iran.py
