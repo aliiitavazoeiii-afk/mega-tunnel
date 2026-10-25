@@ -12,7 +12,7 @@ D="$BASE/xhttp-$ROLE"
 BUNDLE="/root/mega-$ROLE-xhttp-client.json"
 STATE="/var/lib/mega-tunnel/xhttp-$ROLE"
 LIB=/usr/local/lib/mega-tunnel
-BIN="$LIB/xray-v26.9.8"
+BIN="$LIB/xray-v26.9.30"
 UNIT="mega-$ROLE-xhttp-foreign.service"
 [[ -d "$BASE" && -f "$BASE/stage0.json" ]] || { echo "Run bootstrap-stage0.sh $ROLE first" >&2; exit 1; }
 python3 - "$BASE/stage0.json" "$ROLE" <<'PY'
@@ -49,9 +49,9 @@ PY
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends ca-certificates curl unzip iproute2 python3
-# Xray binary pinned to v26.9.8; official release archive checksum.
-ZIPURL='https://github.com/XTLS/Xray-core/releases/download/v26.9.8/Xray-linux-64.zip'
-ZIPSHA='a8c6d5b53957600d7e18d16e697201a4c942fe823307deb039bf8f40587aa556'
+# Xray binary pinned to v26.9.30; official release archive checksum.
+ZIPURL='https://github.com/XTLS/Xray-core/releases/download/v26.9.30/Xray-linux-64.zip'
+ZIPSHA='f851110beaff16e78d643f0ccfd9524b4a44dfd59bae3e34bb52bba378f7690e'
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 curl -fsSL --retry 3 --connect-timeout 10 --max-time 180 -o "$TMP/xray.zip" "$ZIPURL"
@@ -75,8 +75,8 @@ import hashlib,ipaddress,json,os,re,subprocess,sys,uuid
 binary,config,bundle,role=sys.argv[1:]
 p=subprocess.run([binary,"x25519"],capture_output=True,text=True,check=True)
 key_out=p.stdout
-pr=re.search(r'(?im)^Private key:\s*([A-Za-z0-9_-]{43,44})\s*$',key_out)
-pub=re.search(r'(?im)^(?:Password|Public key):\s*([A-Za-z0-9_-]{43,44})\s*$',key_out)
+pr=re.search(r'(?im)^Private\s*key:\s*([A-Za-z0-9_-]{43,44})\s*,key_out)
+pub=re.search(r'(?im)^(?:Password(?:\s*\(PublicKey\))?|Public\s*key):\s*([A-Za-z0-9_-]{43,44})\s*,key_out)
 if not pr or not pub: raise SystemExit("Xray x25519 output unexpected; do not leak keys")
 private,public=pr.group(1),pub.group(1)
 uid=str(uuid.uuid4())
@@ -107,7 +107,7 @@ manifest={
  "public_ip":ip,"port":443,"reality_server_name":sni,"public_key":public,
  "short_id":shortid,"uuid":uid,"xhttp_path":path,
  "xray_binary_sha256":hashlib.sha256(open(binary,"rb").read()).hexdigest(),
- "xray_release":"v26.9.8",
+ "xray_release":"v26.9.30",
  "transport":"tcp-xhttp-stream-one-reality"
 }
 for filename,obj in [(config,server),(bundle,manifest)]:
@@ -160,7 +160,361 @@ ss -H -ltn '( sport = :443 )' | grep -q . ||
  { echo "Foreign :443 listener absent" >&2; exit 1; }
 install -m 0600 "$D/pending-bundle.json" "$BUNDLE"
 rm -f "$D/pending-bundle.json"
-echo "SUCCESS: $ROLE Xray v26.9.8 TCP XHTTP+REALITY foreign is listening on 443."
+echo "SUCCESS: $ROLE Xray v26.9.30 TCP XHTTP+REALITY foreign is listening on 443."
+echo "Private bundle: $BUNDLE (never paste or commit)"
+echo "Verified binary for secure copy: $BIN"
+echo "Stage2 still needs Iran-side TCP end-to-end test. Do NOT route x-ui users yet."
+,key_out)
+pub=re.search(r'(?im)^(?:Password|Public key):\s*([A-Za-z0-9_-]{43,44})\s*$',key_out)
+if not pr or not pub: raise SystemExit("Xray x25519 output unexpected; do not leak keys")
+private,public=pr.group(1),pub.group(1)
+uid=str(uuid.uuid4())
+shortid=os.urandom(8).hex()
+path="/m-"+os.urandom(12).hex()
+ip=os.environ["IP"]
+sni=os.environ["SNI"]
+server={
+ "log":{"loglevel":"warning"},
+ "inbounds":[{
+  "tag":"xhttp-reality-in",
+  "listen":"0.0.0.0","port":443,"protocol":"vless",
+  "settings":{"clients":[{"id":uid,"flow":""}],"decryption":"none"},
+  "streamSettings":{
+   "network":"xhttp","xhttpSettings":{"path":path,"mode":"stream-one"},
+   "security":"reality",
+   "realitySettings":{"show":False,"target":sni+":443",
+     "serverNames":[sni],"privateKey":private,"shortIds":[shortid]}}
+ }],
+ "outbounds":[{"tag":"direct","protocol":"freedom"},
+              {"tag":"block","protocol":"blackhole"}],
+ "routing":{"domainStrategy":"AsIs",
+  "rules":[{"type":"field","inboundTag":["xhttp-reality-in"],
+            "network":"udp","outboundTag":"block"}]}
+}
+manifest={
+ "kind":"mega-xhttp-reality-lab","version":1,"foreign_id":role.upper(),
+ "public_ip":ip,"port":443,"reality_server_name":sni,"public_key":public,
+ "short_id":shortid,"uuid":uid,"xhttp_path":path,
+ "xray_binary_sha256":hashlib.sha256(open(binary,"rb").read()).hexdigest(),
+ "xray_release":"v26.9.30",
+ "transport":"tcp-xhttp-stream-one-reality"
+}
+for filename,obj in [(config,server),(bundle,manifest)]:
+ flags=os.O_CREAT|os.O_EXCL|os.O_WRONLY
+ fd=os.open(filename,flags,0o640)
+ with os.fdopen(fd,"w") as w: json.dump(obj,w,indent=2)
+PY
+chown root:mega-tunnel "$D/server.json"
+chmod 0640 "$D/server.json"
+chmod 0600 "$D/pending-bundle.json"
+runuser -u mega-tunnel -- test -r "$D/server.json" ||
+ { echo "Restricted user cannot read Xray server config" >&2; exit 1; }
+"$BIN" run -test -c "$D/server.json" >/dev/null ||
+ { echo "Xray version/config unsupported: STOP" >&2; exit 1; }
+cat > "/etc/systemd/system/$UNIT" <<EOF
+[Unit]
+Description=Mega Tunnel lab REALITY XHTTP TCP $ROLE foreign
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User=mega-tunnel
+Group=mega-tunnel
+ExecStart=$BIN run -c $D/server.json
+Restart=on-failure
+RestartSec=3
+MemoryHigh=200M
+MemoryMax=420M
+LimitNOFILE=65536
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+systemd-analyze verify "/etc/systemd/system/$UNIT" >/dev/null
+systemctl daemon-reload
+systemctl enable --now "$UNIT"
+for i in $(seq 1 12); do
+ if systemctl is-active --quiet "$UNIT" && ss -H -ltn '( sport = :443 )' | grep -q .; then
+  break
+ fi
+ sleep 1
+done
+systemctl is-active --quiet "$UNIT" || { echo "XHTTP REALITY foreign failed, check its unit" >&2; exit 1; }
+ss -H -ltn '( sport = :443 )' | grep -q . ||
+ { echo "Foreign :443 listener absent" >&2; exit 1; }
+install -m 0600 "$D/pending-bundle.json" "$BUNDLE"
+rm -f "$D/pending-bundle.json"
+echo "SUCCESS: $ROLE Xray v26.9.30 TCP XHTTP+REALITY foreign is listening on 443."
+echo "Private bundle: $BUNDLE (never paste or commit)"
+echo "Verified binary for secure copy: $BIN"
+echo "Stage2 still needs Iran-side TCP end-to-end test. Do NOT route x-ui users yet."
+,key_out)
+if not pr or not pub: raise SystemExit("Xray x25519 output unexpected; do not leak keys")
+private,public=pr.group(1),pub.group(1)
+uid=str(uuid.uuid4())
+shortid=os.urandom(8).hex()
+path="/m-"+os.urandom(12).hex()
+ip=os.environ["IP"]
+sni=os.environ["SNI"]
+server={
+ "log":{"loglevel":"warning"},
+ "inbounds":[{
+  "tag":"xhttp-reality-in",
+  "listen":"0.0.0.0","port":443,"protocol":"vless",
+  "settings":{"clients":[{"id":uid,"flow":""}],"decryption":"none"},
+  "streamSettings":{
+   "network":"xhttp","xhttpSettings":{"path":path,"mode":"stream-one"},
+   "security":"reality",
+   "realitySettings":{"show":False,"target":sni+":443",
+     "serverNames":[sni],"privateKey":private,"shortIds":[shortid]}}
+ }],
+ "outbounds":[{"tag":"direct","protocol":"freedom"},
+              {"tag":"block","protocol":"blackhole"}],
+ "routing":{"domainStrategy":"AsIs",
+  "rules":[{"type":"field","inboundTag":["xhttp-reality-in"],
+            "network":"udp","outboundTag":"block"}]}
+}
+manifest={
+ "kind":"mega-xhttp-reality-lab","version":1,"foreign_id":role.upper(),
+ "public_ip":ip,"port":443,"reality_server_name":sni,"public_key":public,
+ "short_id":shortid,"uuid":uid,"xhttp_path":path,
+ "xray_binary_sha256":hashlib.sha256(open(binary,"rb").read()).hexdigest(),
+ "xray_release":"v26.9.30",
+ "transport":"tcp-xhttp-stream-one-reality"
+}
+for filename,obj in [(config,server),(bundle,manifest)]:
+ flags=os.O_CREAT|os.O_EXCL|os.O_WRONLY
+ fd=os.open(filename,flags,0o640)
+ with os.fdopen(fd,"w") as w: json.dump(obj,w,indent=2)
+PY
+chown root:mega-tunnel "$D/server.json"
+chmod 0640 "$D/server.json"
+chmod 0600 "$D/pending-bundle.json"
+runuser -u mega-tunnel -- test -r "$D/server.json" ||
+ { echo "Restricted user cannot read Xray server config" >&2; exit 1; }
+"$BIN" run -test -c "$D/server.json" >/dev/null ||
+ { echo "Xray version/config unsupported: STOP" >&2; exit 1; }
+cat > "/etc/systemd/system/$UNIT" <<EOF
+[Unit]
+Description=Mega Tunnel lab REALITY XHTTP TCP $ROLE foreign
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User=mega-tunnel
+Group=mega-tunnel
+ExecStart=$BIN run -c $D/server.json
+Restart=on-failure
+RestartSec=3
+MemoryHigh=200M
+MemoryMax=420M
+LimitNOFILE=65536
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+systemd-analyze verify "/etc/systemd/system/$UNIT" >/dev/null
+systemctl daemon-reload
+systemctl enable --now "$UNIT"
+for i in $(seq 1 12); do
+ if systemctl is-active --quiet "$UNIT" && ss -H -ltn '( sport = :443 )' | grep -q .; then
+  break
+ fi
+ sleep 1
+done
+systemctl is-active --quiet "$UNIT" || { echo "XHTTP REALITY foreign failed, check its unit" >&2; exit 1; }
+ss -H -ltn '( sport = :443 )' | grep -q . ||
+ { echo "Foreign :443 listener absent" >&2; exit 1; }
+install -m 0600 "$D/pending-bundle.json" "$BUNDLE"
+rm -f "$D/pending-bundle.json"
+echo "SUCCESS: $ROLE Xray v26.9.30 TCP XHTTP+REALITY foreign is listening on 443."
+echo "Private bundle: $BUNDLE (never paste or commit)"
+echo "Verified binary for secure copy: $BIN"
+echo "Stage2 still needs Iran-side TCP end-to-end test. Do NOT route x-ui users yet."
+,key_out)
+pub=re.search(r'(?im)^(?:Password(?:\s*\(PublicKey\))?|Public\s*key):\s*([A-Za-z0-9_-]{43,44})\s*,key_out)
+if not pr or not pub: raise SystemExit("Xray x25519 output unexpected; do not leak keys")
+private,public=pr.group(1),pub.group(1)
+uid=str(uuid.uuid4())
+shortid=os.urandom(8).hex()
+path="/m-"+os.urandom(12).hex()
+ip=os.environ["IP"]
+sni=os.environ["SNI"]
+server={
+ "log":{"loglevel":"warning"},
+ "inbounds":[{
+  "tag":"xhttp-reality-in",
+  "listen":"0.0.0.0","port":443,"protocol":"vless",
+  "settings":{"clients":[{"id":uid,"flow":""}],"decryption":"none"},
+  "streamSettings":{
+   "network":"xhttp","xhttpSettings":{"path":path,"mode":"stream-one"},
+   "security":"reality",
+   "realitySettings":{"show":False,"target":sni+":443",
+     "serverNames":[sni],"privateKey":private,"shortIds":[shortid]}}
+ }],
+ "outbounds":[{"tag":"direct","protocol":"freedom"},
+              {"tag":"block","protocol":"blackhole"}],
+ "routing":{"domainStrategy":"AsIs",
+  "rules":[{"type":"field","inboundTag":["xhttp-reality-in"],
+            "network":"udp","outboundTag":"block"}]}
+}
+manifest={
+ "kind":"mega-xhttp-reality-lab","version":1,"foreign_id":role.upper(),
+ "public_ip":ip,"port":443,"reality_server_name":sni,"public_key":public,
+ "short_id":shortid,"uuid":uid,"xhttp_path":path,
+ "xray_binary_sha256":hashlib.sha256(open(binary,"rb").read()).hexdigest(),
+ "xray_release":"v26.9.30",
+ "transport":"tcp-xhttp-stream-one-reality"
+}
+for filename,obj in [(config,server),(bundle,manifest)]:
+ flags=os.O_CREAT|os.O_EXCL|os.O_WRONLY
+ fd=os.open(filename,flags,0o640)
+ with os.fdopen(fd,"w") as w: json.dump(obj,w,indent=2)
+PY
+chown root:mega-tunnel "$D/server.json"
+chmod 0640 "$D/server.json"
+chmod 0600 "$D/pending-bundle.json"
+runuser -u mega-tunnel -- test -r "$D/server.json" ||
+ { echo "Restricted user cannot read Xray server config" >&2; exit 1; }
+"$BIN" run -test -c "$D/server.json" >/dev/null ||
+ { echo "Xray version/config unsupported: STOP" >&2; exit 1; }
+cat > "/etc/systemd/system/$UNIT" <<EOF
+[Unit]
+Description=Mega Tunnel lab REALITY XHTTP TCP $ROLE foreign
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User=mega-tunnel
+Group=mega-tunnel
+ExecStart=$BIN run -c $D/server.json
+Restart=on-failure
+RestartSec=3
+MemoryHigh=200M
+MemoryMax=420M
+LimitNOFILE=65536
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+systemd-analyze verify "/etc/systemd/system/$UNIT" >/dev/null
+systemctl daemon-reload
+systemctl enable --now "$UNIT"
+for i in $(seq 1 12); do
+ if systemctl is-active --quiet "$UNIT" && ss -H -ltn '( sport = :443 )' | grep -q .; then
+  break
+ fi
+ sleep 1
+done
+systemctl is-active --quiet "$UNIT" || { echo "XHTTP REALITY foreign failed, check its unit" >&2; exit 1; }
+ss -H -ltn '( sport = :443 )' | grep -q . ||
+ { echo "Foreign :443 listener absent" >&2; exit 1; }
+install -m 0600 "$D/pending-bundle.json" "$BUNDLE"
+rm -f "$D/pending-bundle.json"
+echo "SUCCESS: $ROLE Xray v26.9.30 TCP XHTTP+REALITY foreign is listening on 443."
+echo "Private bundle: $BUNDLE (never paste or commit)"
+echo "Verified binary for secure copy: $BIN"
+echo "Stage2 still needs Iran-side TCP end-to-end test. Do NOT route x-ui users yet."
+,key_out)
+if not pr or not pub: raise SystemExit("Xray x25519 output unexpected; do not leak keys")
+private,public=pr.group(1),pub.group(1)
+uid=str(uuid.uuid4())
+shortid=os.urandom(8).hex()
+path="/m-"+os.urandom(12).hex()
+ip=os.environ["IP"]
+sni=os.environ["SNI"]
+server={
+ "log":{"loglevel":"warning"},
+ "inbounds":[{
+  "tag":"xhttp-reality-in",
+  "listen":"0.0.0.0","port":443,"protocol":"vless",
+  "settings":{"clients":[{"id":uid,"flow":""}],"decryption":"none"},
+  "streamSettings":{
+   "network":"xhttp","xhttpSettings":{"path":path,"mode":"stream-one"},
+   "security":"reality",
+   "realitySettings":{"show":False,"target":sni+":443",
+     "serverNames":[sni],"privateKey":private,"shortIds":[shortid]}}
+ }],
+ "outbounds":[{"tag":"direct","protocol":"freedom"},
+              {"tag":"block","protocol":"blackhole"}],
+ "routing":{"domainStrategy":"AsIs",
+  "rules":[{"type":"field","inboundTag":["xhttp-reality-in"],
+            "network":"udp","outboundTag":"block"}]}
+}
+manifest={
+ "kind":"mega-xhttp-reality-lab","version":1,"foreign_id":role.upper(),
+ "public_ip":ip,"port":443,"reality_server_name":sni,"public_key":public,
+ "short_id":shortid,"uuid":uid,"xhttp_path":path,
+ "xray_binary_sha256":hashlib.sha256(open(binary,"rb").read()).hexdigest(),
+ "xray_release":"v26.9.30",
+ "transport":"tcp-xhttp-stream-one-reality"
+}
+for filename,obj in [(config,server),(bundle,manifest)]:
+ flags=os.O_CREAT|os.O_EXCL|os.O_WRONLY
+ fd=os.open(filename,flags,0o640)
+ with os.fdopen(fd,"w") as w: json.dump(obj,w,indent=2)
+PY
+chown root:mega-tunnel "$D/server.json"
+chmod 0640 "$D/server.json"
+chmod 0600 "$D/pending-bundle.json"
+runuser -u mega-tunnel -- test -r "$D/server.json" ||
+ { echo "Restricted user cannot read Xray server config" >&2; exit 1; }
+"$BIN" run -test -c "$D/server.json" >/dev/null ||
+ { echo "Xray version/config unsupported: STOP" >&2; exit 1; }
+cat > "/etc/systemd/system/$UNIT" <<EOF
+[Unit]
+Description=Mega Tunnel lab REALITY XHTTP TCP $ROLE foreign
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User=mega-tunnel
+Group=mega-tunnel
+ExecStart=$BIN run -c $D/server.json
+Restart=on-failure
+RestartSec=3
+MemoryHigh=200M
+MemoryMax=420M
+LimitNOFILE=65536
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+systemd-analyze verify "/etc/systemd/system/$UNIT" >/dev/null
+systemctl daemon-reload
+systemctl enable --now "$UNIT"
+for i in $(seq 1 12); do
+ if systemctl is-active --quiet "$UNIT" && ss -H -ltn '( sport = :443 )' | grep -q .; then
+  break
+ fi
+ sleep 1
+done
+systemctl is-active --quiet "$UNIT" || { echo "XHTTP REALITY foreign failed, check its unit" >&2; exit 1; }
+ss -H -ltn '( sport = :443 )' | grep -q . ||
+ { echo "Foreign :443 listener absent" >&2; exit 1; }
+install -m 0600 "$D/pending-bundle.json" "$BUNDLE"
+rm -f "$D/pending-bundle.json"
+echo "SUCCESS: $ROLE Xray v26.9.30 TCP XHTTP+REALITY foreign is listening on 443."
 echo "Private bundle: $BUNDLE (never paste or commit)"
 echo "Verified binary for secure copy: $BIN"
 echo "Stage2 still needs Iran-side TCP end-to-end test. Do NOT route x-ui users yet."
