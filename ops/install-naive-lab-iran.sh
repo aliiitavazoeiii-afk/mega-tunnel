@@ -56,6 +56,13 @@ install -m 0755 "$FILE" "$BIN/naive-v154"
 if ! id mega-tunnel >/dev/null 2>&1; then
  useradd --system --no-create-home --shell /usr/sbin/nologin mega-tunnel
 fi
+# Stage0 sets the root parent to 0700, so the unprivileged Naive process
+# needs group execute-only access to traverse to its private configuration.
+# Group read is NOT granted on the shared root parent or its other secrets.
+[[ -d /etc/mega-tunnel && $(stat -c %u /etc/mega-tunnel) == 0 ]] ||
+ { echo "Unexpected /etc/mega-tunnel ownership; abort" >&2; exit 1; }
+chgrp mega-tunnel /etc/mega-tunnel
+chmod 0710 /etc/mega-tunnel
 install -d -o root -g mega-tunnel -m 0750 "$D"
 python3 - "$BUNDLE" "$D/client.json" "$PORT" <<'PY'
 import json,os,sys
@@ -70,6 +77,8 @@ fd=os.open(config_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o640)
 with os.fdopen(fd,"w") as f: json.dump(c,f,indent=2)
 PY
 chown root:mega-tunnel "$D/client.json"
+runuser -u mega-tunnel -- test -r "$D/client.json" ||
+ { echo "Naive system user cannot read its config; aborting before start" >&2; exit 1; }
 cat > "/etc/systemd/system/$SERVICE.service" <<EOF
 [Unit]
 Description=Mega Tunnel Naive TCP lab $GATEWAY -> $ROLE
