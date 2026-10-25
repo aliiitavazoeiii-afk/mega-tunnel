@@ -14,11 +14,20 @@ jobs:
       - name: Static syntax checks
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/audit-xui294.py
-          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/install-naive-lab-iran.sh ops/test-naive-lab.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
       - name: Verify standalone diagnostics have no compile errors
         run: python3 -m py_compile ops/diagnose-tcp.py ops/audit-xui294.py
+      - name: Stage1 lab security guards
+        run: |
+          grep -Fq 'No x-ui' ops/install-naive-lab-foreign.sh
+          grep -Fq 'socks://127.0.0.1:' ops/install-naive-lab-iran.sh
+          grep -Fq 'sha256sum -c -' ops/install-naive-lab-foreign.sh
+          grep -Fq 'sha256sum -c -' ops/install-naive-lab-iran.sh
+          grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-iran.sh
+          grep -Fq 'ProtectSystem=strict' ops/install-naive-lab-foreign.sh
+          ! grep -Eq 'systemctl (restart|stop|disable) x-ui' ops/install-naive-lab-*.sh
       - name: Requirement files must exist
         run: |
           test -s docs/REQUIREMENTS.md
