@@ -2,6 +2,15 @@
 
 **NOT PRODUCTION READY. DO NOT DEPLOY ON LIVE MAYA1/MAYA3.** No live VPN servers were modified.
 
+## 2026-10-25 — Stage 1 Naive TCP lab (code ready; NOT deployed)
+
+- Added `ops/install-naive-lab-foreign.sh` for a real pinned Naive HTTPS TCP foreign lab F1 or F3, with Caddy Naive TLS and a private bundle.
+- Added `ops/install-naive-lab-iran.sh` for a real encrypted client through the foreign, bound to loopback TCP SOCKS at 17995 for Maya1 (17997 for Maya3). x-ui **2.9.4** is checked but NEVER altered.
+- Added `ops/test-naive-lab.sh` for sequential HTTPS smoke/latency tests and host RAM observation.
+- Official upstream binary versions and digests are pinned and validated, and shell syntax checks are included in CI.
+- Instructions: `docs/STAGE1-NAIVE-LAB.md`. **No actual server installation/field verification has occurred in this chat.**
+- On Maya1 the VMware balloon consumed approximately **1,278 MB of its nominal 2 GB**; the hosting provider was contacted. Do not run concurrency/load tests before the provider resolves balloon pressure.
+
 ## Implemented and committed
 - 30 fixed product requirements and anti-downgrade security/operational contract.
 - Architecture: Maya1/Maya3, four logical foreign nodes, each gateway's two primaries and cross-gateway emergency access.
