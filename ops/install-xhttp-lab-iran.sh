@@ -13,7 +13,7 @@ esac
 BASE=/etc/mega-tunnel
 D="$BASE/xhttp-$ROLE"
 LIB=/usr/local/lib/mega-tunnel
-BIN="$LIB/xray-v26.9.8"
+BIN="$LIB/xray-v26.9.30"
 UNIT="mega-$ROLE-xhttp-client.service"
 umask 077
 [[ -s "$BUNDLE" && -s "$TRANSFERRED" && -d "$BASE" ]] ||
@@ -36,7 +36,7 @@ if s.get('kind')!='mega-tunnel-stage0' or s.get('role')!=gateway:
 b=json.loads(pathlib.Path(bundle).read_text())
 if b.get("kind")!="mega-xhttp-reality-lab" or b.get("version")!=1 or b.get("foreign_id")!=role.upper():
  raise SystemExit("Wrong foreign XHTTP bundle; STOP")
-if b.get("xray_release")!="v26.9.8" or b.get("transport")!="tcp-xhttp-stream-one-reality":
+if b.get("xray_release")!="v26.9.30" or b.get("transport")!="tcp-xhttp-stream-one-reality":
  raise SystemExit("Wrong binary version/transport")
 if b.get("port")!=443 or not ipaddress.IPv4Address(b["public_ip"]).is_global:
  raise SystemExit("Invalid remote port/public IP")
@@ -65,7 +65,7 @@ fi
 install -d -m 0755 "$LIB"
 if [[ -e "$BIN" ]]; then
  cmp -s "$BIN" "$TRANSFERRED" ||
-  { echo "Existing Xray v26.9.8 differs from verified F2 binary; STOP" >&2; exit 1; }
+  { echo "Existing Xray v26.9.30 differs from verified F2 binary; STOP" >&2; exit 1; }
 else
  install -m 0755 "$TRANSFERRED" "$BIN"
 fi
