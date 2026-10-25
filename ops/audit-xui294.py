@@ -13,9 +13,15 @@ def inspect(db_path, xui_bin):
         "mode": "READ_ONLY_XUI_294_AUDIT",
         "version_exact_2_9_4": False,
         "database_readable": False,
-        "xray_template_valid_json": False,
-        "api_routing_rules_present": False,
+        # None = unknown, not false. In 3x-ui v2.9.4, a missing DB
+        # xrayTemplateConfig uses the embedded web/service/config.json.
+        "xray_template_source": None,
+        "xray_template_valid_json": None,
+        "api_routing_rules_present": None,
         "public_443_inbounds": None,
+        "inbounds_total": None,
+        "enabled_inbounds": None,
+        "inbound_ports_sample": [],
         "client_configuration_unchanged": True,
     }
     binpath = Path(xui_bin)
@@ -58,23 +64,32 @@ def inspect(db_path, xui_bin):
                 ("xrayTemplateConfig",)
             ).fetchone()
             if row is None:
-                result["fatal"] = "xrayTemplateConfig missing; never auto-seed"
-                return result
-            cfg = json.loads(row[0])
-            if not isinstance(cfg, dict):
-                raise ValueError("template not dict")
-            outbounds = cfg.get("outbounds")
-            routing = cfg.get("routing")
-            result["xray_template_valid_json"] = (
-                isinstance(outbounds, list) and isinstance(routing, dict)
-            )
-            rules = routing.get("rules", []) if isinstance(routing, dict) else []
-            if isinstance(rules, list):
-                result["api_routing_rules_present"] = any(
-                    isinstance(r, dict)
-                    and "api" in (r.get("inboundTag") or [])
-                    for r in rules
+                # Verified in upstream 3x-ui v2.9.4 SettingService.getString:
+                # defaults to an embedded Go config.json when DB key missing.
+                # We cannot read embedded effective runtime config from SQLite.
+                result["xray_template_source"] = "built_in_default_possible"
+                result["warning"] = (
+                    "xrayTemplateConfig not stored; 3x-ui v2.9.4 "
+                    "may use its bundled default. Effective Xray "
+                    "configuration and API rules are not verified."
                 )
+            else:
+                result["xray_template_source"] = "database_saved"
+                cfg = json.loads(row[0])
+                if not isinstance(cfg, dict):
+                    raise ValueError("template not dict")
+                outbounds = cfg.get("outbounds")
+                routing = cfg.get("routing")
+                result["xray_template_valid_json"] = (
+                    isinstance(outbounds, list) and isinstance(routing, dict)
+                )
+                rules = routing.get("rules", []) if isinstance(routing, dict) else []
+                if isinstance(rules, list):
+                    result["api_routing_rules_present"] = any(
+                        isinstance(r, dict)
+                        and "api" in (r.get("inboundTag") or [])
+                        for r in rules
+                    )
             # Safe table introspection; never select client UUID/credentials.
             columns = {r[1] for r in conn.execute(
                 'PRAGMA table_info("inbounds")'
@@ -82,6 +97,21 @@ def inspect(db_path, xui_bin):
             if "port" not in columns:
                 result["fatal"] = "port column missing"
                 return result
+            result["inbounds_total"] = conn.execute(
+                'SELECT count(*) FROM "inbounds"'
+            ).fetchone()[0]
+            if "enable" in columns:
+                result["enabled_inbounds"] = conn.execute(
+                    'SELECT count(*) FROM "inbounds" WHERE "enable"=1'
+                ).fetchone()[0]
+            # Safe metadata ONLY: never select client UUIDs, paths,
+            # inbound JSON, usernames, emails, passwords, tokens or tags.
+            result["inbound_ports_sample"] = [
+                row[0] for row in conn.execute(
+                    'SELECT DISTINCT "port" FROM "inbounds" '
+                    'ORDER BY "port" LIMIT 20'
+                ).fetchall()
+            ]
             result["public_443_inbounds"] = conn.execute(
                 'SELECT count(*) FROM "inbounds" WHERE "port"=?',
                 (443,)
@@ -101,8 +131,8 @@ def main():
         "fatal" not in result
         and result["version_exact_2_9_4"]
         and result["database_readable"]
-        and result["xray_template_valid_json"]
-        and result["api_routing_rules_present"]
+        and result["xray_template_valid_json"] is True
+        and result["api_routing_rules_present"] is True
         and result["public_443_inbounds"] == 1
     )
     result["safe_to_plan_staged_adapter"] = ready
