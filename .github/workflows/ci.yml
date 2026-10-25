@@ -14,6 +14,7 @@ jobs:
       - name: Static syntax checks
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/diagnose-naive-lab-iran.py ops/audit-xui294.py
+          python3 ops/check-embedded-python.py
           bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh ops/install-naive-lab-foreign.sh ops/repair-naive-lab-foreign.sh ops/repair-naive-connect-foreign.sh ops/install-naive-lab-iran.sh ops/resume-naive-lab-iran.sh ops/test-naive-lab.sh ops/install-xhttp-lab-foreign.sh ops/install-xhttp-lab-iran.sh ops/test-two-paths-maya1.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
