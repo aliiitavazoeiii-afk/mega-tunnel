@@ -14,7 +14,7 @@ jobs:
       - name: Static syntax checks
         run: |
           python3 -m compileall -q mega_tunnel tests ops/diagnose-tcp.py ops/audit-xui294.py
-          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh
+          bash -n ops/preflight-iran.sh ops/preflight-foreign.sh ops/bootstrap-stage0.sh
       - name: Domain failover / invariants tests
         run: python3 -m unittest discover -s tests -v
       - name: Verify standalone diagnostics have no compile errors
